@@ -17,11 +17,15 @@ namespace Glytos.Resources
         public Task<Call> CreateAsync(object body, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<Call>(HttpMethod.Post, "/calls", body, cancellationToken: cancellationToken);
 
-        /// <summary>List calls.</summary>
-        public Task<IReadOnlyList<Call>> ListAsync(
+        /// <summary>List calls. The endpoint is paginated; its items are returned.</summary>
+        public async Task<IReadOnlyList<Call>> ListAsync(
             IDictionary<string, object?>? query = null,
-            CancellationToken cancellationToken = default) =>
-            _client.RequestAsync<IReadOnlyList<Call>>(HttpMethod.Get, "/calls", query: query, cancellationToken: cancellationToken);
+            CancellationToken cancellationToken = default)
+        {
+            var page = await _client.RequestAsync<Paginated<Call>>(
+                HttpMethod.Get, "/calls", query: query, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return page.Items;
+        }
 
         /// <summary>Retrieve a call by uuid.</summary>
         public Task<Call> RetrieveAsync(string callUuid, CancellationToken cancellationToken = default) =>

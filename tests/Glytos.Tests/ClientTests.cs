@@ -50,12 +50,25 @@ namespace Glytos.Tests
         [Fact]
         public async Task DropsNullQueryParameters()
         {
-            var handler = new StubHandler(HttpStatusCode.OK, "[]");
+            var handler = new StubHandler(HttpStatusCode.OK, "{\"items\":[]}");
             using var client = NewClient(handler);
 
             await client.Calls.ListAsync(new Dictionary<string, object?> { ["status"] = "completed", ["agent"] = null });
 
             Assert.Equal("?status=completed", handler.LastRequest!.RequestUri!.Query);
+        }
+
+        [Fact]
+        public async Task PaginatedListUnwrapsItems()
+        {
+            // /calls wraps results in an {items, total, ...} envelope; the SDK returns the items.
+            var handler = new StubHandler(HttpStatusCode.OK, "{\"items\":[{\"uuid\":\"call_1\",\"status\":\"completed\"}],\"total\":1}");
+            using var client = NewClient(handler);
+
+            var calls = await client.Calls.ListAsync();
+
+            Assert.Single(calls);
+            Assert.Equal("call_1", calls[0].Uuid);
         }
 
         [Fact]

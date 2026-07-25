@@ -89,7 +89,7 @@ namespace Glytos.Resources
             _client.RequestAsync<JsonElement>(HttpMethod.Delete, "/webhooks/endpoints/" + endpointId.ToString(CultureInfo.InvariantCulture), cancellationToken: cancellationToken);
 
         /// <summary>List recent webhook delivery attempts, optionally filtered.</summary>
-        public Task<IReadOnlyList<WebhookDelivery>> DeliveriesAsync(
+        public async Task<IReadOnlyList<WebhookDelivery>> DeliveriesAsync(
             string? eventType = null,
             string? status = null,
             int? limit = null,
@@ -117,7 +117,9 @@ namespace Glytos.Resources
                 query["offset"] = offset;
             }
 
-            return _client.RequestAsync<IReadOnlyList<WebhookDelivery>>(HttpMethod.Get, "/webhooks/deliveries", query: query, cancellationToken: cancellationToken);
+            var page = await _client.RequestAsync<Paginated<WebhookDelivery>>(
+                HttpMethod.Get, "/webhooks/deliveries", query: query, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return page.Items;
         }
 
         /// <summary>Re-attempt a previously failed webhook delivery.</summary>

@@ -7,6 +7,17 @@ namespace Glytos
     // Each model carries the fields you rely on plus an AdditionalData bag, so new API
     // fields are preserved rather than dropped and never break your build.
 
+    /// <summary>
+    /// A paginated list envelope. Some list endpoints wrap their results in
+    /// <c>{ items, total, limit, offset }</c>; resources unwrap it so every list
+    /// method returns a plain collection.
+    /// </summary>
+    internal sealed class Paginated<T>
+    {
+        [JsonPropertyName("items")]
+        public IReadOnlyList<T> Items { get; init; } = new List<T>();
+    }
+
     /// <summary>An agent: a prompt agent or a visual workflow.</summary>
     public sealed record Workflow
     {
