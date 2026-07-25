@@ -11,11 +11,18 @@ namespace Glytos.Resources
     {
         private readonly GlytosClient _client;
 
+        private static readonly HttpMethod Patch = new HttpMethod("PATCH");
+
         internal Workflows(GlytosClient client) => _client = client;
 
-        /// <summary>List your agents (prompt agents and visual workflows).</summary>
-        public Task<IReadOnlyList<Workflow>> ListAsync(CancellationToken cancellationToken = default) =>
-            _client.RequestAsync<IReadOnlyList<Workflow>>(HttpMethod.Get, "/workflows", cancellationToken: cancellationToken);
+        /// <summary>
+        /// List your agents (prompt agents and visual workflows). Pass an optional query to
+        /// filter, e.g. <c>{ ["archived"] = true }</c> or <c>{ ["environment"] = "all" }</c>.
+        /// </summary>
+        public Task<IReadOnlyList<Workflow>> ListAsync(
+            IDictionary<string, object?>? query = null,
+            CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<IReadOnlyList<Workflow>>(HttpMethod.Get, "/workflows", query: query, cancellationToken: cancellationToken);
 
         /// <summary>Retrieve a single agent by uuid.</summary>
         public Task<Workflow> RetrieveAsync(string workflowUuid, CancellationToken cancellationToken = default) =>
@@ -56,6 +63,83 @@ namespace Glytos.Resources
         /// <summary>The run-event log for a session (routing decisions, tool calls, ...).</summary>
         public Task<JsonElement> SessionEventsAsync(string workflowUuid, string sessionUuid, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<JsonElement>(HttpMethod.Get, "/workflows/" + Uri(workflowUuid) + "/sessions/" + Uri(sessionUuid) + "/events", cancellationToken: cancellationToken);
+
+        /// <summary>Rename an agent (updates the display name only).</summary>
+        public Task<Workflow> RenameAsync(string workflowUuid, string name, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Workflow>(Patch, "/workflows/" + Uri(workflowUuid), new Dictionary<string, object?> { ["name"] = name }, cancellationToken: cancellationToken);
+
+        /// <summary>Duplicate an agent, returning the new copy.</summary>
+        public Task<Workflow> DuplicateAsync(string workflowUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Workflow>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/duplicate", cancellationToken: cancellationToken);
+
+        /// <summary>Archive an agent (hide it without deleting).</summary>
+        public Task<Workflow> ArchiveAsync(string workflowUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Workflow>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/archive", cancellationToken: cancellationToken);
+
+        /// <summary>Unarchive a previously archived agent.</summary>
+        public Task<Workflow> UnarchiveAsync(string workflowUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Workflow>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/unarchive", cancellationToken: cancellationToken);
+
+        /// <summary>Promote an agent by moving it into the target environment.</summary>
+        public Task<Workflow> PromoteAsync(string workflowUuid, string targetEnvironmentId, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Workflow>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/promote", new Dictionary<string, object?> { ["target_environment_id"] = targetEnvironmentId }, cancellationToken: cancellationToken);
+
+        /// <summary>List the stored versions (revisions) of an agent.</summary>
+        public Task<IReadOnlyList<WorkflowVersion>> VersionsAsync(string workflowUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<IReadOnlyList<WorkflowVersion>>(HttpMethod.Get, "/workflows/" + Uri(workflowUuid) + "/versions", cancellationToken: cancellationToken);
+
+        /// <summary>Replace the agent's workflow graph definition.</summary>
+        public Task<Workflow> UpdateDefinitionAsync(string workflowUuid, object graph, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Workflow>(HttpMethod.Put, "/workflows/" + Uri(workflowUuid) + "/definition", new Dictionary<string, object?> { ["graph"] = graph }, cancellationToken: cancellationToken);
+
+        /// <summary>Replace the agent's configuration block.</summary>
+        public Task<Workflow> UpdateConfigAsync(string workflowUuid, object config, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Workflow>(HttpMethod.Put, "/workflows/" + Uri(workflowUuid) + "/config", new Dictionary<string, object?> { ["config"] = config }, cancellationToken: cancellationToken);
+
+        /// <summary>Start a new conversation session with the agent.</summary>
+        public Task<Session> StartSessionAsync(
+            string workflowUuid,
+            object? variables = null,
+            int? version = null,
+            CancellationToken cancellationToken = default)
+        {
+            var body = new Dictionary<string, object?>();
+            if (variables is not null)
+            {
+                body["variables"] = variables;
+            }
+
+            if (version is not null)
+            {
+                body["version"] = version;
+            }
+
+            return _client.RequestAsync<Session>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/sessions", body, cancellationToken: cancellationToken);
+        }
+
+        /// <summary>Send a message to an existing session and get the turn's reply.</summary>
+        public Task<JsonElement> SendMessageAsync(
+            string workflowUuid,
+            string sessionUuid,
+            string content,
+            object? images = null,
+            CancellationToken cancellationToken = default)
+        {
+            var body = new Dictionary<string, object?> { ["content"] = content };
+            if (images is not null)
+            {
+                body["images"] = images;
+            }
+
+            return _client.RequestAsync<JsonElement>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/sessions/" + Uri(sessionUuid) + "/messages", body, cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Run the agent over a full message list in one shot. <paramref name="messages"/> is a
+        /// list of <c>{ role, content }</c> objects.
+        /// </summary>
+        public Task<JsonElement> RunTextAsync(string workflowUuid, object messages, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<JsonElement>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/runs/text", new Dictionary<string, object?> { ["messages"] = messages }, cancellationToken: cancellationToken);
 
         private static string Uri(string value) => System.Uri.EscapeDataString(value);
     }

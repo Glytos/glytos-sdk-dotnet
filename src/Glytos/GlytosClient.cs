@@ -50,6 +50,24 @@ namespace Glytos
         /// <summary>Webhooks: manage endpoints and verify delivery signatures.</summary>
         public Webhooks Webhooks { get; }
 
+        /// <summary>Campaigns: run outbound calling campaigns over your agents.</summary>
+        public Campaigns Campaigns { get; }
+
+        /// <summary>Chat: mint hosted-chat tokens and post messages to text agents.</summary>
+        public Chat Chat { get; }
+
+        /// <summary>Tools: manage the tools your agents can call.</summary>
+        public Tools Tools { get; }
+
+        /// <summary>Knowledge base: manage documents and run hybrid retrieval.</summary>
+        public KnowledgeBase KnowledgeBase { get; }
+
+        /// <summary>Vector stores: group knowledge-base documents for retrieval.</summary>
+        public VectorStores VectorStores { get; }
+
+        /// <summary>Analytics: aggregated usage and performance metrics.</summary>
+        public Analytics Analytics { get; }
+
         /// <summary>Creates a client with the given API key and default options.</summary>
         public GlytosClient(string apiKey)
             : this(apiKey, null)
@@ -96,6 +114,12 @@ namespace Glytos
             PhoneNumbers = new PhoneNumbers(this);
             Sessions = new Sessions(this);
             Webhooks = new Webhooks(this);
+            Campaigns = new Campaigns(this);
+            Chat = new Chat(this);
+            Tools = new Tools(this);
+            KnowledgeBase = new KnowledgeBase(this);
+            VectorStores = new VectorStores(this);
+            Analytics = new Analytics(this);
         }
 
         /// <summary>

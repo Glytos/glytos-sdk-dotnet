@@ -46,5 +46,65 @@ namespace Glytos.Resources
         /// <summary>Release (delete) a number.</summary>
         public Task<JsonElement> ReleaseAsync(string numberUuid, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<JsonElement>(HttpMethod.Delete, "/telephony/numbers/" + System.Uri.EscapeDataString(numberUuid), cancellationToken: cancellationToken);
+
+        /// <summary>List the telephony providers available to your organization.</summary>
+        public Task<JsonElement> ProvidersAsync(CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<JsonElement>(HttpMethod.Get, "/telephony/providers", cancellationToken: cancellationToken);
+
+        /// <summary>Import an existing number you already own on a carrier.</summary>
+        public Task<PhoneNumber> ImportNumberAsync(
+            string e164,
+            string? provider = null,
+            string? providerSid = null,
+            object? credentials = null,
+            string? workflowUuid = null,
+            CancellationToken cancellationToken = default)
+        {
+            var body = new Dictionary<string, object?> { ["e164"] = e164 };
+            if (provider is not null)
+            {
+                body["provider"] = provider;
+            }
+
+            if (providerSid is not null)
+            {
+                body["provider_sid"] = providerSid;
+            }
+
+            if (credentials is not null)
+            {
+                body["credentials"] = credentials;
+            }
+
+            if (workflowUuid is not null)
+            {
+                body["workflow_uuid"] = workflowUuid;
+            }
+
+            return _client.RequestAsync<PhoneNumber>(HttpMethod.Post, "/telephony/numbers/import", body, cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Provision an instant platform number. The country and provider are sent as query
+        /// parameters, not a request body.
+        /// </summary>
+        public Task<PhoneNumber> InstantAsync(
+            string? country = null,
+            string? provider = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = new Dictionary<string, object?>();
+            if (country is not null)
+            {
+                query["country"] = country;
+            }
+
+            if (provider is not null)
+            {
+                query["provider"] = provider;
+            }
+
+            return _client.RequestAsync<PhoneNumber>(HttpMethod.Post, "/telephony/numbers/instant", query: query, cancellationToken: cancellationToken);
+        }
     }
 }
