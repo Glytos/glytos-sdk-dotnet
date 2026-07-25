@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -107,6 +108,10 @@ namespace Glytos
                 PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
                 PropertyNameCaseInsensitive = true,
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                // Relaxed encoder so request bodies match the other SDKs on the wire (e.g. a
+                // phone number "+1555..." is sent literally, not escaped to "+1555...").
+                // Safe for JSON API payloads (this output is never embedded in HTML).
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             };
 
             Workflows = new Workflows(this);
