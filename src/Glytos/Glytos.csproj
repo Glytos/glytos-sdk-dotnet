@@ -16,11 +16,11 @@
 
   <PropertyGroup>
     <PackageId>Glytos</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Glytos</Authors>
     <Company>Glytos</Company>
-    <Description>Official Glytos server SDK for .NET. Build and run voice agents, start phone and web calls, manage phone numbers, and verify webhooks.</Description>
-    <PackageTags>glytos;voice;ai;agent;sdk;api</PackageTags>
+    <Description>Official Glytos server SDK for .NET. Build an agent once and run it as text or as voice: threaded conversations with streaming, phone and web calls, phone numbers, and signed webhooks.</Description>
+    <PackageTags>glytos;voice;chat;ai;agent;sdk;api</PackageTags>
     <PackageProjectUrl>https://glytos.com</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Glytos/glytos-sdk-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
