@@ -68,6 +68,21 @@ namespace Glytos.Resources
         public Task<Workflow> RenameAsync(string workflowUuid, string name, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<Workflow>(Patch, "/workflows/" + Uri(workflowUuid), new Dictionary<string, object?> { ["name"] = name }, cancellationToken: cancellationToken);
 
+        /// <summary>
+        /// Export an agent as portable, secret-free JSON. It imports back through
+        /// <c>Imports.CreateAsync("glytos", ...)</c>, on this account or another.
+        /// </summary>
+        public Task<JsonElement> ExportAsync(string workflowUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<JsonElement>(HttpMethod.Get, "/workflows/" + Uri(workflowUuid) + "/export", cancellationToken: cancellationToken);
+
+        /// <summary>File an agent into a folder. Both must be in the same environment.</summary>
+        public Task<Workflow> MoveToFolderAsync(string workflowUuid, string folderUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Workflow>(Patch, "/workflows/" + Uri(workflowUuid), new Dictionary<string, object?> { ["folder_uuid"] = folderUuid }, cancellationToken: cancellationToken);
+
+        /// <summary>Take an agent out of its folder, leaving it ungrouped.</summary>
+        public Task<Workflow> RemoveFromFolderAsync(string workflowUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Workflow>(Patch, "/workflows/" + Uri(workflowUuid), new Dictionary<string, object?> { ["folder_uuid"] = null }, cancellationToken: cancellationToken);
+
         /// <summary>Duplicate an agent, returning the new copy.</summary>
         public Task<Workflow> DuplicateAsync(string workflowUuid, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<Workflow>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/duplicate", cancellationToken: cancellationToken);
@@ -117,13 +132,39 @@ namespace Glytos.Resources
             return _client.RequestAsync<Session>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/sessions", body, cancellationToken: cancellationToken);
         }
 
-        /// <summary>Send a message to an existing session and get the turn's reply.</summary>
+        /// <summary>
+        /// Send a message to an existing session and get the turn's reply.
+        /// <paramref name="instructions"/> apply to this turn only and are never saved
+        /// to the agent.
+        /// </summary>
         public Task<JsonElement> SendMessageAsync(
             string workflowUuid,
             string sessionUuid,
             string content,
             object? images = null,
-            CancellationToken cancellationToken = default)
+            string? instructions = null,
+            CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<JsonElement>(
+                HttpMethod.Post,
+                "/workflows/" + Uri(workflowUuid) + "/sessions/" + Uri(sessionUuid) + "/messages",
+                TurnBody(content, images, instructions),
+                cancellationToken: cancellationToken);
+
+        /// <summary>The same turn, delivered as it is written.</summary>
+        public IAsyncEnumerable<StreamEvent> StreamMessageAsync(
+            string workflowUuid,
+            string sessionUuid,
+            string content,
+            object? images = null,
+            string? instructions = null,
+            CancellationToken cancellationToken = default) =>
+            _client.StreamAsync(
+                HttpMethod.Post,
+                "/workflows/" + Uri(workflowUuid) + "/sessions/" + Uri(sessionUuid) + "/messages/stream",
+                TurnBody(content, images, instructions),
+                cancellationToken);
+
+        private static Dictionary<string, object?> TurnBody(string content, object? images, string? instructions)
         {
             var body = new Dictionary<string, object?> { ["content"] = content };
             if (images is not null)
@@ -131,7 +172,12 @@ namespace Glytos.Resources
                 body["images"] = images;
             }
 
-            return _client.RequestAsync<JsonElement>(HttpMethod.Post, "/workflows/" + Uri(workflowUuid) + "/sessions/" + Uri(sessionUuid) + "/messages", body, cancellationToken: cancellationToken);
+            if (instructions is not null)
+            {
+                body["additional_instructions"] = instructions;
+            }
+
+            return body;
         }
 
         /// <summary>

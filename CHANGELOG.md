@@ -4,6 +4,32 @@ All notable changes to this project are documented in this file. The format is b
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `Threads` - conversations with a text agent in thread/run vocabulary:
+  `Threads.CreateAsync`, `Threads.RetrieveAsync`, `Threads.Messages.CreateAsync/ListAsync`,
+  `Threads.Runs.CreateAsync/StreamAsync`.
+- Streaming. `Threads.Runs.StreamAsync`, `Agents.StreamMessageAsync` and
+  `Chat.StreamAsync` return an `IAsyncEnumerable<StreamEvent>` of `token` deltas and
+  a terminal `done` carrying the finished run.
+- Per-turn instructions on every text turn (`instructions`), applied below the
+  agent's own and never saved to it.
+- File uploads: `Chat.UploadFileAsync`, `KnowledgeBase.UploadDocumentAsync`,
+  `VectorStores.UploadDocumentAsync`, plus `UploadAsync<T>()` for any other
+  multipart endpoint.
+- `Folders` - group agents inside an environment, and
+  `Agents.MoveToFolderAsync` / `Agents.RemoveFromFolderAsync` to file one.
+- `Imports` - bring an agent over from another platform, and `Agents.ExportAsync`
+  for the portable, secret-free JSON that imports back.
+- `Agents` as an alias of `Workflows`, matching what the product calls them.
+
+### Changed
+
+- `SendMessageAsync` takes an optional `instructions` argument before the
+  cancellation token.
+
 ## [0.1.0] - 2026-07-19
 
 ### Added

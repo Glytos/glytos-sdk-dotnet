@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -38,6 +41,18 @@ namespace Glytos
 
         /// <summary>Agents: prompt agents and visual workflows.</summary>
         public Workflows Workflows { get; }
+
+        /// <summary>The same resource as <c>Workflows</c>, under the word the product uses.</summary>
+        public Workflows Agents { get; }
+
+        /// <summary>Threads: conversations with a text agent, and the runs on them.</summary>
+        public Threads Threads { get; }
+
+        /// <summary>Folders: group agents inside an environment.</summary>
+        public Folders Folders { get; }
+
+        /// <summary>Imports: bring an agent over from another platform.</summary>
+        public Imports Imports { get; }
 
         /// <summary>Calls: start and manage phone and web calls.</summary>
         public Calls Calls { get; }
@@ -115,6 +130,10 @@ namespace Glytos
             };
 
             Workflows = new Workflows(this);
+            Agents = Workflows;
+            Threads = new Threads(this);
+            Folders = new Folders(this);
+            Imports = new Imports(this);
             Calls = new Calls(this);
             PhoneNumbers = new PhoneNumbers(this);
             Sessions = new Sessions(this);
@@ -163,6 +182,11 @@ namespace Glytos
                 request.Content = new StringContent(json, Encoding.UTF8, "application/json");
             }
 
+            return await SendAndReadAsync<T>(request, cancellationToken).ConfigureAwait(false);
+        }
+
+        private async Task<T> SendAndReadAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
             HttpResponseMessage response;
             try
             {
@@ -193,6 +217,209 @@ namespace Glytos
 
                 return JsonSerializer.Deserialize<T>(text, _jsonOptions)!;
             }
+        }
+
+        /// <summary>
+        /// Stream a Server-Sent Events endpoint, yielding one parsed event at a time.
+        /// </summary>
+        /// <remarks>
+        /// The reply arrives as it is written rather than after the last token, which is
+        /// the whole difference on a long answer. The terminal <c>done</c> event carries
+        /// the same payload the non-streamed call returns.
+        /// </remarks>
+        public IAsyncEnumerable<StreamEvent> StreamAsync(
+            string method,
+            string path,
+            object? body = null,
+            CancellationToken cancellationToken = default)
+            => StreamAsync(new HttpMethod(method), path, body, cancellationToken);
+
+        /// <inheritdoc cref="StreamAsync(string,string,object,CancellationToken)" />
+        public async IAsyncEnumerable<StreamEvent> StreamAsync(
+            HttpMethod method,
+            string path,
+            object? body = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            using var request = new HttpRequestMessage(method, BuildUri(path, null));
+            request.Headers.TryAddWithoutValidation("X-API-Key", _apiKey);
+            request.Headers.TryAddWithoutValidation("Accept", "text/event-stream");
+            if (_environment is not null)
+            {
+                request.Headers.TryAddWithoutValidation("X-Environment-Id", _environment);
+            }
+
+            if (body is not null)
+            {
+                var json = JsonSerializer.Serialize(body, _jsonOptions);
+                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+            }
+
+            using var response = await SendStreamAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var (code, message) = ParseError(text, response.ReasonPhrase);
+                var requestId = response.Headers.TryGetValues("X-Request-Id", out var values)
+                    ? FirstOrNull(values)
+                    : null;
+                throw new GlytosException((int)response.StatusCode, code, message, requestId);
+            }
+
+            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            using var reader = new StreamReader(stream, Encoding.UTF8);
+            var name = string.Empty;
+            var data = new StringBuilder();
+            while (true)
+            {
+                string? line = await reader.ReadLineAsync().ConfigureAwait(false);
+                if (line is null)
+                {
+                    break;
+                }
+
+                // Events are separated by a blank line.
+                if (line.Length == 0)
+                {
+                    var complete = BuildStreamEvent(name, data.ToString());
+                    name = string.Empty;
+                    data.Clear();
+                    if (complete is not null)
+                    {
+                        yield return complete;
+                    }
+
+                    continue;
+                }
+
+                if (line.StartsWith("event:", StringComparison.Ordinal))
+                {
+                    name = line.Substring(6).Trim();
+                }
+                else if (line.StartsWith("data:", StringComparison.Ordinal))
+                {
+                    if (data.Length > 0)
+                    {
+                        data.Append('\n');
+                    }
+
+                    data.Append(line.Substring(5).Trim());
+                }
+            }
+
+            // A stream that ends without a trailing blank line still has one event to give.
+            var last = BuildStreamEvent(name, data.ToString());
+            if (last is not null)
+            {
+                yield return last;
+            }
+        }
+
+        /// <summary>
+        /// Upload a file. Separate from <see cref="RequestAsync{T}(string,string,object,IDictionary{string,object},CancellationToken)"/>
+        /// because the body is multipart, so the Content-Type has to carry the boundary.
+        /// </summary>
+        public async Task<T> UploadAsync<T>(
+            string path,
+            IDictionary<string, string> fields,
+            string filename,
+            byte[] content,
+            CancellationToken cancellationToken = default)
+        {
+            var form = new MultipartFormDataContent();
+            foreach (var field in fields)
+            {
+                var part = new StringContent(field.Value, Encoding.UTF8);
+                // Quoted explicitly: .NET writes `name=x` bare, and RFC 7578 wants `name="x"`.
+                part.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+                {
+                    Name = Quote(field.Key),
+                };
+                form.Add(part);
+            }
+
+            var file = new ByteArrayContent(content);
+            file.Headers.TryAddWithoutValidation("Content-Type", "application/octet-stream");
+            file.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            {
+                Name = Quote("file"),
+                FileName = Quote(filename),
+            };
+            form.Add(file);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, BuildUri(path, null)) { Content = form };
+            request.Headers.TryAddWithoutValidation("X-API-Key", _apiKey);
+            request.Headers.TryAddWithoutValidation("Accept", "application/json");
+            if (_environment is not null)
+            {
+                request.Headers.TryAddWithoutValidation("X-Environment-Id", _environment);
+            }
+
+            return await SendAndReadAsync<T>(request, cancellationToken).ConfigureAwait(false);
+        }
+
+        private static string Quote(string value) => "\"" + value.Replace("\"", string.Empty) + "\"";
+
+        private async Task<HttpResponseMessage> SendStreamAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await _httpClient
+                    .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (HttpRequestException exception)
+            {
+                throw new GlytosException(0, "network_error", exception.Message, null, exception);
+            }
+        }
+
+        private static StreamEvent? BuildStreamEvent(string name, string data)
+        {
+            if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(data))
+            {
+                return null;
+            }
+
+            JsonElement parsed = default;
+            try
+            {
+                using var document = JsonDocument.Parse(data);
+                parsed = document.RootElement.Clone();
+            }
+            catch (JsonException)
+            {
+                // Non-JSON payload; the event still carries its type.
+            }
+
+            switch (name)
+            {
+                case "token":
+                    return new StreamEvent("token", ReadString(parsed, "delta", string.Empty), string.Empty, default);
+                case "error":
+                    return new StreamEvent("error", string.Empty, ReadString(parsed, "message", "stream failed"), default);
+                case "done":
+                    return new StreamEvent("done", string.Empty, string.Empty, parsed);
+                default:
+                    return null;
+            }
+        }
+
+        private static string ReadString(JsonElement element, string property, string fallback)
+        {
+            if (element.ValueKind != JsonValueKind.Object || !element.TryGetProperty(property, out var value))
+            {
+                return fallback;
+            }
+
+            if (value.ValueKind == JsonValueKind.String)
+            {
+                return value.GetString() ?? fallback;
+            }
+
+            return value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+                ? fallback
+                : value.ToString();
         }
 
         private string BuildUri(string path, IDictionary<string, object?>? query)

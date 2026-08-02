@@ -42,6 +42,25 @@ namespace Glytos.Resources
             return _client.RequestAsync<Document>(HttpMethod.Post, "/knowledge-base/documents", body, cancellationToken: cancellationToken);
         }
 
+        /// <summary>Upload a file as a knowledge-base document.</summary>
+        public Task<Document> UploadDocumentAsync(
+            byte[] content,
+            string filename = "document",
+            CancellationToken cancellationToken = default) =>
+            _client.UploadAsync<Document>(
+                "/knowledge-base/documents/upload",
+                new Dictionary<string, string>(),
+                filename,
+                content,
+                cancellationToken);
+
+        /// <inheritdoc cref="UploadDocumentAsync(byte[],string,CancellationToken)" />
+        public Task<Document> UploadDocumentAsync(
+            string content,
+            string filename = "document",
+            CancellationToken cancellationToken = default) =>
+            UploadDocumentAsync(System.Text.Encoding.UTF8.GetBytes(content), filename, cancellationToken);
+
         /// <summary>Run a hybrid (vector + full-text) search over your documents.</summary>
         public Task<IReadOnlyList<SearchHit>> SearchAsync(
             string query,

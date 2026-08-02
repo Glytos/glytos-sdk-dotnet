@@ -6,9 +6,10 @@
 
 The official [Glytos](https://glytos.com) server SDK for .NET.
 
-Call the Glytos API from your backend with an API key: build and run voice agents,
-start phone calls, mint browser web-call tokens, manage phone numbers, and verify
-webhooks. Targets `net8.0` and `netstandard2.0`.
+Call the Glytos API from your backend with an API key. Build agents once and run
+them as **text** or as **voice**: hold a threaded conversation, stream a reply as it
+is written, place phone calls, mint browser web-call tokens, manage numbers, and
+verify webhooks. Targets `net8.0` and `netstandard2.0`.
 
 > Never ship an API key to the browser. For in-browser voice, use the `@glytos/web`
 > package with a short-lived token you mint here.
@@ -27,11 +28,40 @@ using Glytos;
 using var glytos = new GlytosClient("gly_...");
 
 // List your agents
-var agents = await glytos.Workflows.ListAsync();
+var agents = await glytos.Agents.ListAsync();
 
-// Mint a web-call token for the browser
+// Talk to one as text
+var thread = await glytos.Threads.CreateAsync(agents[0].Uuid);
+var run = await glytos.Threads.Runs.CreateAsync(thread, "What are your opening hours?");
+Console.WriteLine(run.GetProperty("messages")[0].GetProperty("content").GetString());
+
+// Or mint a web-call token and talk to the same agent in the browser
 var token = await glytos.Calls.WebTokenAsync(workflowUuid: agents[0].Uuid);
 Console.WriteLine($"{token.Token} {token.WsUrl}");
+```
+
+### Streaming
+
+A long answer should not arrive as one silent wait:
+
+```csharp
+await foreach (var e in glytos.Threads.Runs.StreamAsync(thread, "Summarise the policy"))
+{
+    if (e.Type == "token") Console.Write(e.Delta);
+    if (e.Type == "done") Console.WriteLine();
+}
+```
+
+### Per-turn instructions
+
+Extra context for one turn only, applied below the agent's own instructions and
+never saved to it:
+
+```csharp
+await glytos.Threads.Runs.CreateAsync(
+    thread,
+    "Rate this transcript",
+    instructions: "Score 1-5 and reply as JSON.");
 ```
 
 Scope the client to an environment or a regional stack, or hand it an `HttpClient`
@@ -50,14 +80,35 @@ var overview = await glytos.RequestAsync<JsonElement>("GET", "/analytics/overvie
 
 | Property | Methods |
 | --- | --- |
-| `glytos.Workflows` | `ListAsync`, `RetrieveAsync`, `CreateAsync`, `PublishAsync`, `DeleteAsync`, `TemplatesAsync`, `SessionAsync`, `SessionEventsAsync` |
+| `glytos.Agents` (alias `Workflows`) | `ListAsync`, `RetrieveAsync`, `CreateAsync`, `RenameAsync`, `PublishAsync`, `PromoteAsync`, `DuplicateAsync`, `ArchiveAsync`, `DeleteAsync`, `TemplatesAsync`, `ExportAsync`, `MoveToFolderAsync`, `RemoveFromFolderAsync`, `VersionsAsync`, `StartSessionAsync`, `SendMessageAsync`, `StreamMessageAsync`, `RunTextAsync` |
+| `glytos.Threads` | `CreateAsync`, `RetrieveAsync`, `Messages.CreateAsync`, `Messages.ListAsync`, `Runs.CreateAsync`, `Runs.StreamAsync` |
+| `glytos.Folders` | `ListAsync`, `CreateAsync`, `RenameAsync`, `DeleteAsync` |
+| `glytos.Imports` | `SourcesAsync`, `CreateAsync`, `AssistantAsync` |
+| `glytos.Chat` | `TokenAsync`, `MessagesAsync`, `StreamAsync`, `UploadFileAsync` |
 | `glytos.Calls` | `CreateAsync`, `ListAsync`, `RetrieveAsync`, `WebTokenAsync`, `ControlAsync` |
-| `glytos.PhoneNumbers` | `SearchAsync`, `ListAsync`, `ProvisionAsync`, `AssignAsync`, `ReleaseAsync` |
+| `glytos.PhoneNumbers` | `SearchAsync`, `ListAsync`, `ProvisionAsync`, `ImportNumberAsync`, `InstantAsync`, `AssignAsync`, `ReleaseAsync`, `ProvidersAsync` |
+| `glytos.KnowledgeBase` | `ListDocumentsAsync`, `CreateDocumentAsync`, `UploadDocumentAsync`, `SearchAsync` |
+| `glytos.VectorStores` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `DeleteAsync`, `UploadDocumentAsync` |
+| `glytos.Tools` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `UpdateAsync`, `DeleteAsync` |
+| `glytos.Campaigns` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `StartAsync`, `SyncContactsAsync` |
 | `glytos.Sessions` | `ListAsync` |
-| `glytos.Webhooks` | `ListAsync`, `CreateAsync`, `DeleteAsync`, `EventsAsync`, `Verify` |
+| `glytos.Analytics` | `OverviewAsync` |
+| `glytos.Webhooks` | `ListAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `EventsAsync`, `DeliveriesAsync`, `RedeliverAsync`, `Verify` |
+
+`Agents` and `Workflows` are the same resource under two names: the product calls
+them agents, the API path is `/workflows`. Either works.
+
+### Text and voice are separate
+
+An agent is one definition. Nothing forces it to do both:
+
+- A **text** agent needs only `Threads` (or `Chat` for a browser widget).
+- A **voice** agent adds `Calls`, `PhoneNumbers` and `Campaigns`.
+- The same agent can do both, if you want it to.
 
 Any endpoint without a dedicated helper is one call away with
-`glytos.RequestAsync<T>(method, path, body, query)`.
+`glytos.RequestAsync<T>(method, path, body, query)`, or
+`glytos.StreamAsync(method, path, body)` for a Server-Sent Events one.
 
 ## ASP.NET Core
 

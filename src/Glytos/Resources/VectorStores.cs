@@ -28,5 +28,26 @@ namespace Glytos.Resources
         /// <summary>Delete a vector store.</summary>
         public Task<JsonElement> DeleteAsync(string vectorStoreUuid, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<JsonElement>(HttpMethod.Delete, "/vector-stores/" + System.Uri.EscapeDataString(vectorStoreUuid), cancellationToken: cancellationToken);
+
+        /// <summary>Upload a file straight into a vector store.</summary>
+        public Task<Document> UploadDocumentAsync(
+            string vectorStoreUuid,
+            byte[] content,
+            string filename = "document",
+            CancellationToken cancellationToken = default) =>
+            _client.UploadAsync<Document>(
+                "/vector-stores/" + System.Uri.EscapeDataString(vectorStoreUuid) + "/documents/upload",
+                new Dictionary<string, string>(),
+                filename,
+                content,
+                cancellationToken);
+
+        /// <inheritdoc cref="UploadDocumentAsync(string,byte[],string,CancellationToken)" />
+        public Task<Document> UploadDocumentAsync(
+            string vectorStoreUuid,
+            string content,
+            string filename = "document",
+            CancellationToken cancellationToken = default) =>
+            UploadDocumentAsync(vectorStoreUuid, System.Text.Encoding.UTF8.GetBytes(content), filename, cancellationToken);
     }
 }
