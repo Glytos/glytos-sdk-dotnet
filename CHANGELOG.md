@@ -4,6 +4,37 @@ All notable changes to this project are documented in this file. The format is b
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `Dnc` - the numbers your organization must not call: `Dnc.ListAsync`,
+  `Dnc.AddAsync`, `Dnc.ImportAsync`, `Dnc.SetScopeAsync`, `Dnc.RemoveAsync`. Every
+  outbound call is checked against this list, whether it comes from a campaign or
+  from `Calls.CreateAsync`.
+- `Campaigns.StopAsync`, `Campaigns.DeleteAsync` and `Campaigns.AddContactsAsync`
+  (upload a contact list as CSV text rather than serving it over HTTP).
+- `Campaigns.PreviewSuppressionAsync` - how many of a contact list each
+  suppression policy would reach, including how many of those people asked on a
+  call not to be contacted again.
+- `Campaigns.CreateAsync` gained `contactsCsv`, `scheduledAt`, `callWindowStart`
+  /`callWindowEnd`, `timezone`, `suppressionPolicy` and `overrideCallerRequests`.
+- `CampaignContact`, `SuppressionPreview`, `ContactSyncResult`, `DncEntry`,
+  `DncList` and `DncImportResult` models. `Campaign` gained its scheduling,
+  calling-window and suppression fields; `CampaignDetail` now derives from it and
+  carries `Contacts`.
+
+### Changed
+
+- `Campaigns.StartAsync` and `Campaigns.SyncContactsAsync` return `Campaign` and
+  `ContactSyncResult` rather than a raw `JsonElement`.
+
+### Fixed
+
+- `Campaigns.CreateAsync` took `contacts` as an untyped `object`, inviting the
+  record shape the API rejects with a 422. It is an `IEnumerable<string>` of
+  phone numbers.
+
 ## [0.2.0] - 2026-08-02
 
 ### Added

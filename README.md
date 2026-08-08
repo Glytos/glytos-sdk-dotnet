@@ -90,7 +90,8 @@ var overview = await glytos.RequestAsync<JsonElement>("GET", "/analytics/overvie
 | `glytos.KnowledgeBase` | `ListDocumentsAsync`, `CreateDocumentAsync`, `UploadDocumentAsync`, `SearchAsync` |
 | `glytos.VectorStores` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `DeleteAsync`, `UploadDocumentAsync` |
 | `glytos.Tools` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `UpdateAsync`, `DeleteAsync` |
-| `glytos.Campaigns` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `StartAsync`, `SyncContactsAsync` |
+| `glytos.Campaigns` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `StartAsync`, `StopAsync`, `DeleteAsync`, `AddContactsAsync`, `SyncContactsAsync`, `PreviewSuppressionAsync` |
+| `glytos.Dnc` | `ListAsync`, `AddAsync`, `ImportAsync`, `SetScopeAsync`, `RemoveAsync` |
 | `glytos.Sessions` | `ListAsync` |
 | `glytos.Analytics` | `OverviewAsync` |
 | `glytos.Webhooks` | `ListAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `EventsAsync`, `DeliveriesAsync`, `RedeliverAsync`, `Verify` |
@@ -109,6 +110,51 @@ An agent is one definition. Nothing forces it to do both:
 Any endpoint without a dedicated helper is one call away with
 `glytos.RequestAsync<T>(method, path, body, query)`, or
 `glytos.StreamAsync(method, path, body)` for a Server-Sent Events one.
+
+## Outbound calling
+
+A campaign dials a list of contacts with one agent. Upload the list as CSV text:
+the phone column is found by its header or by which column holds phone numbers,
+and every other column travels with that contact, so `{{name}}` in the agent's
+prompt means the person being called.
+
+```csharp
+var campaign = await glytos.Campaigns.CreateAsync(
+    "March outreach",
+    agent.Uuid,
+    "+15551230000", // must be a number you have connected
+    contactsCsv: File.ReadAllText("leads.csv"),
+    scheduledAt: new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero),
+    callWindowStart: "09:00",
+    callWindowEnd: "20:00",
+    timezone: "Europe/Istanbul");
+```
+
+Left unscheduled, a campaign stays a draft until `StartAsync`. `StopAsync` ends it
+at the next contact, leaving the undialed ones ready to resume. `RetrieveAsync`
+returns each contact's outcome and, where one answered, the session it produced.
+
+Every outbound call is checked against your do-not-call list first, whether it
+comes from a campaign or from `Calls.CreateAsync`. Agents add to that list
+themselves when someone asks not to be contacted again:
+
+```csharp
+await glytos.Dnc.AddAsync("+15551230000", "asked on a call");
+```
+
+A campaign chooses how much of the list applies. The default, `strict`, honours
+all of it. `transactional` still calls people who only refused marketing, which
+is what you want for a call about someone's own order. `ignore` skips entries
+your organization added for itself, but requests people made on a call still
+apply unless you also set `overrideCallerRequests`. Measure before you choose:
+
+```csharp
+var preview = await glytos.Campaigns.PreviewSuppressionAsync(
+    contactsCsv: File.ReadAllText("leads.csv"));
+Console.WriteLine(
+    $"{preview.ReachedIfStrict} of {preview.Contacts} reachable; " +
+    $"{preview.CallerRequested} asked us not to call");
+```
 
 ## ASP.NET Core
 

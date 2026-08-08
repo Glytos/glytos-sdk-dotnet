@@ -69,6 +69,9 @@ namespace Glytos
         /// <summary>Campaigns: run outbound calling campaigns over your agents.</summary>
         public Campaigns Campaigns { get; }
 
+        /// <summary>Dnc: the numbers your organization must not call.</summary>
+        public Dnc Dnc { get; }
+
         /// <summary>Chat: mint hosted-chat tokens and post messages to text agents.</summary>
         public Chat Chat { get; }
 
@@ -139,6 +142,7 @@ namespace Glytos
             Sessions = new Sessions(this);
             Webhooks = new Webhooks(this);
             Campaigns = new Campaigns(this);
+            Dnc = new Dnc(this);
             Chat = new Chat(this);
             Tools = new Tools(this);
             KnowledgeBase = new KnowledgeBase(this);

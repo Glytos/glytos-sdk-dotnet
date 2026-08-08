@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
@@ -17,12 +18,53 @@ namespace Glytos.Resources
         public Task<IReadOnlyList<Campaign>> ListAsync(CancellationToken cancellationToken = default) =>
             _client.RequestAsync<IReadOnlyList<Campaign>>(HttpMethod.Get, "/telephony/campaigns", cancellationToken: cancellationToken);
 
-        /// <summary>Create a calling campaign for an agent.</summary>
+        /// <summary>Create a campaign that dials a contact list with one agent.</summary>
+        /// <param name="name">Display name for the campaign.</param>
+        /// <param name="workflowUuid">The agent to run for each contact.</param>
+        /// <param name="fromNumber">
+        /// The caller id to dial from. It must be a number your organization has
+        /// connected, or the campaign is refused.
+        /// </param>
+        /// <param name="contacts">
+        /// Phone numbers in any spelling; they are converted to international form
+        /// and deduplicated.
+        /// </param>
+        /// <param name="contactsCsv">
+        /// The contents of a CSV file. The phone column is found by its header or by
+        /// which column holds phone numbers, and every other column travels with that
+        /// contact's call as a variable, so <c>{{name}}</c> in the agent's prompt means
+        /// the person being called.
+        /// </param>
+        /// <param name="scheduledAt">
+        /// Start dialing at a moment in the future. Left unset, the campaign is a draft
+        /// until <see cref="StartAsync"/>.
+        /// </param>
+        /// <param name="callWindowStart">Start of the dialing hours, e.g. <c>"09:00"</c>.</param>
+        /// <param name="callWindowEnd">End of the dialing hours, e.g. <c>"20:00"</c>.</param>
+        /// <param name="timezone">An IANA name, e.g. <c>"Europe/Istanbul"</c>. Defaults to UTC.</param>
+        /// <param name="suppressionPolicy">
+        /// How much of the do-not-call list this campaign honours: <c>strict</c>
+        /// (default, all of it), <c>transactional</c> (skip entries that only refused
+        /// marketing), or <c>ignore</c> (skip entries the organization added for itself;
+        /// requests people made on a call still apply).
+        /// </param>
+        /// <param name="overrideCallerRequests">
+        /// Also call people who asked, on a call, not to be contacted again. Only valid
+        /// with a <paramref name="suppressionPolicy"/> of <c>ignore</c>.
+        /// </param>
+        /// <param name="cancellationToken">Cancels the request.</param>
         public Task<Campaign> CreateAsync(
             string name,
             string workflowUuid,
             string fromNumber,
-            object? contacts = null,
+            IEnumerable<string>? contacts = null,
+            string? contactsCsv = null,
+            DateTimeOffset? scheduledAt = null,
+            string? callWindowStart = null,
+            string? callWindowEnd = null,
+            string? timezone = null,
+            string? suppressionPolicy = null,
+            bool? overrideCallerRequests = null,
             CancellationToken cancellationToken = default)
         {
             var body = new Dictionary<string, object?>
@@ -33,22 +75,108 @@ namespace Glytos.Resources
             };
             if (contacts is not null)
             {
-                body["contacts"] = contacts;
+                body["contacts"] = new List<string>(contacts);
+            }
+
+            if (contactsCsv is not null)
+            {
+                body["contacts_csv"] = contactsCsv;
+            }
+
+            if (scheduledAt is not null)
+            {
+                body["scheduled_at"] = scheduledAt.Value.ToString("o");
+            }
+
+            if (callWindowStart is not null)
+            {
+                body["call_window_start"] = callWindowStart;
+            }
+
+            if (callWindowEnd is not null)
+            {
+                body["call_window_end"] = callWindowEnd;
+            }
+
+            if (timezone is not null)
+            {
+                body["timezone"] = timezone;
+            }
+
+            if (suppressionPolicy is not null)
+            {
+                body["suppression_policy"] = suppressionPolicy;
+            }
+
+            if (overrideCallerRequests is not null)
+            {
+                body["override_caller_requests"] = overrideCallerRequests;
             }
 
             return _client.RequestAsync<Campaign>(HttpMethod.Post, "/telephony/campaigns", body, cancellationToken: cancellationToken);
         }
 
-        /// <summary>Retrieve a campaign by uuid.</summary>
+        /// <summary>A campaign with its contacts and their outcomes.</summary>
         public Task<CampaignDetail> RetrieveAsync(string campaignUuid, CancellationToken cancellationToken = default) =>
-            _client.RequestAsync<CampaignDetail>(HttpMethod.Get, "/telephony/campaigns/" + System.Uri.EscapeDataString(campaignUuid), cancellationToken: cancellationToken);
+            _client.RequestAsync<CampaignDetail>(HttpMethod.Get, "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid), cancellationToken: cancellationToken);
 
-        /// <summary>Start dialing a campaign.</summary>
-        public Task<JsonElement> StartAsync(string campaignUuid, CancellationToken cancellationToken = default) =>
-            _client.RequestAsync<JsonElement>(HttpMethod.Post, "/telephony/campaigns/" + System.Uri.EscapeDataString(campaignUuid) + "/start", cancellationToken: cancellationToken);
+        /// <summary>Begin dialing, from the contacts that have not been called yet.</summary>
+        public Task<Campaign> StartAsync(string campaignUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Campaign>(HttpMethod.Post, "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid) + "/start", cancellationToken: cancellationToken);
 
-        /// <summary>Sync the campaign's contact list from a remote source URL.</summary>
-        public Task<JsonElement> SyncContactsAsync(string campaignUuid, string sourceUrl, CancellationToken cancellationToken = default) =>
-            _client.RequestAsync<JsonElement>(HttpMethod.Post, "/telephony/campaigns/" + System.Uri.EscapeDataString(campaignUuid) + "/contacts/sync", new Dictionary<string, object?> { ["source_url"] = sourceUrl }, cancellationToken: cancellationToken);
+        /// <summary>
+        /// End dialing at the next contact. Calls already handed to the carrier run to
+        /// their end; undialed contacts stay ready, so <see cref="StartAsync"/> resumes.
+        /// </summary>
+        public Task<Campaign> StopAsync(string campaignUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Campaign>(HttpMethod.Post, "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid) + "/stop", cancellationToken: cancellationToken);
+
+        /// <summary>Remove a campaign and its contact list, stopping it first if running.</summary>
+        public Task<JsonElement> DeleteAsync(string campaignUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<JsonElement>(HttpMethod.Delete, "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid), cancellationToken: cancellationToken);
+
+        /// <summary>Append contacts from the contents of a CSV file.</summary>
+        public Task<ContactSyncResult> AddContactsAsync(string campaignUuid, string contactsCsv, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<ContactSyncResult>(
+                HttpMethod.Post,
+                "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid) + "/contacts/sync",
+                new Dictionary<string, object?> { ["contacts_csv"] = contactsCsv },
+                cancellationToken: cancellationToken);
+
+        /// <summary>Append contacts from a CSV your own system serves over HTTP.</summary>
+        public Task<ContactSyncResult> SyncContactsAsync(string campaignUuid, string sourceUrl, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<ContactSyncResult>(
+                HttpMethod.Post,
+                "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid) + "/contacts/sync",
+                new Dictionary<string, object?> { ["source_url"] = sourceUrl },
+                cancellationToken: cancellationToken);
+
+        /// <summary>
+        /// How many of a contact list each suppression policy would reach, including how
+        /// many of those people asked on a call not to be contacted again. Measure before
+        /// choosing anything other than the default.
+        /// </summary>
+        public Task<SuppressionPreview> PreviewSuppressionAsync(
+            IEnumerable<string>? contacts = null,
+            string? contactsCsv = null,
+            CancellationToken cancellationToken = default)
+        {
+            var body = new Dictionary<string, object?>();
+            if (contacts is not null)
+            {
+                body["contacts"] = new List<string>(contacts);
+            }
+
+            if (contactsCsv is not null)
+            {
+                body["contacts_csv"] = contactsCsv;
+            }
+
+            return _client.RequestAsync<SuppressionPreview>(
+                HttpMethod.Post,
+                "/telephony/campaigns/suppression-preview",
+                body,
+                cancellationToken: cancellationToken);
+        }
     }
 }

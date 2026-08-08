@@ -155,7 +155,7 @@ namespace Glytos
     }
 
     /// <summary>An outbound calling campaign.</summary>
-    public sealed record Campaign
+    public record Campaign
     {
         /// <summary>Unique id of the campaign.</summary>
         public string Uuid { get; init; } = string.Empty;
@@ -163,28 +163,206 @@ namespace Glytos
         /// <summary>Display name.</summary>
         public string Name { get; init; } = string.Empty;
 
-        /// <summary>Current campaign status.</summary>
+        /// <summary>
+        /// One of <c>draft</c>, <c>scheduled</c>, <c>running</c>, <c>waiting</c>,
+        /// <c>stopped</c>, <c>completed</c>, <c>halted</c>, <c>out_of_credit</c>
+        /// or <c>failed</c>.
+        /// </summary>
         public string? Status { get; init; }
+
+        /// <summary>
+        /// Why a campaign stopped short of the end of its list, so <c>halted</c>
+        /// and <c>out_of_credit</c> are actionable.
+        /// </summary>
+        public string? StatusDetail { get; init; }
 
         /// <summary>The agent this campaign dials with, when present.</summary>
         public string? WorkflowUuid { get; init; }
+
+        /// <summary>The caller id this campaign dials from.</summary>
+        public string? FromNumber { get; init; }
+
+        /// <summary>When dialing starts, if it was scheduled for the future.</summary>
+        public string? ScheduledAt { get; init; }
+
+        /// <summary>When dialing actually began.</summary>
+        public string? StartedAt { get; init; }
+
+        /// <summary>When the campaign reached the end of its list, or was stopped.</summary>
+        public string? FinishedAt { get; init; }
+
+        /// <summary>Start of the dialing hours, read in <see cref="Timezone"/>.</summary>
+        public string? CallWindowStart { get; init; }
+
+        /// <summary>End of the dialing hours, read in <see cref="Timezone"/>.</summary>
+        public string? CallWindowEnd { get; init; }
+
+        /// <summary>The IANA zone the calling window is read in.</summary>
+        public string? Timezone { get; init; }
+
+        /// <summary>
+        /// How much of the do-not-call list this campaign honours: <c>strict</c>,
+        /// <c>transactional</c> or <c>ignore</c>.
+        /// </summary>
+        public string? SuppressionPolicy { get; init; }
+
+        /// <summary>
+        /// Whether this campaign also calls people who asked, on a call, not to be
+        /// contacted again.
+        /// </summary>
+        public bool? OverrideCallerRequests { get; init; }
 
         /// <summary>Fields not modelled above.</summary>
         [JsonExtensionData]
         public IDictionary<string, JsonElement>? AdditionalData { get; init; }
     }
 
-    /// <summary>Full detail for one campaign, including its contacts when present.</summary>
-    public sealed record CampaignDetail
+    /// <summary>One dial target and what became of it.</summary>
+    public sealed record CampaignContact
     {
-        /// <summary>Unique id of the campaign.</summary>
+        /// <summary>The number dialed, in international form.</summary>
+        public string Phone { get; init; } = string.Empty;
+
+        /// <summary>
+        /// One of <c>pending</c>, <c>dialing</c>, <c>answered</c>, <c>voicemail</c>,
+        /// <c>no_answer</c>, <c>failed</c> or <c>suppressed</c>. Busy is not reported
+        /// separately from <c>no_answer</c>: it needs per-carrier callbacks the
+        /// platform does not collect.
+        /// </summary>
+        public string Status { get; init; } = string.Empty;
+
+        /// <summary>The carrier's own id for the call.</summary>
+        public string? CallSid { get; init; }
+
+        /// <summary>The carrier's own words when it refused the number.</summary>
+        public string? Error { get; init; }
+
+        /// <summary>The conversation this contact produced, if it answered.</summary>
+        public string? SessionUuid { get; init; }
+
+        /// <summary>
+        /// The contact's other CSV columns, which reach the agent's prompt, so
+        /// <c>{{name}}</c> means this person.
+        /// </summary>
+        public IDictionary<string, string>? Variables { get; init; }
+
+        /// <summary>Fields not modelled above.</summary>
+        [JsonExtensionData]
+        public IDictionary<string, JsonElement>? AdditionalData { get; init; }
+    }
+
+    /// <summary>A campaign with its contact list.</summary>
+    public sealed record CampaignDetail : Campaign
+    {
+        /// <summary>The contacts and their outcomes.</summary>
+        public IReadOnlyList<CampaignContact> Contacts { get; init; } = new List<CampaignContact>();
+    }
+
+    /// <summary>How many of a contact list each suppression policy would reach.</summary>
+    public sealed record SuppressionPreview
+    {
+        /// <summary>How many usable numbers the list held.</summary>
+        public int Contacts { get; init; }
+
+        /// <summary>How many of them are on the do-not-call list at all.</summary>
+        public int SuppressedTotal { get; init; }
+
+        /// <summary>How many of them asked, on a call, not to be contacted again.</summary>
+        public int CallerRequested { get; init; }
+
+        /// <summary>Reachable under the default policy.</summary>
+        public int ReachedIfStrict { get; init; }
+
+        /// <summary>Reachable if entries that only refused marketing are skipped.</summary>
+        public int ReachedIfTransactional { get; init; }
+
+        /// <summary>Reachable if the organization's own entries are skipped.</summary>
+        public int ReachedIfIgnore { get; init; }
+
+        /// <summary>Reachable if caller requests are overruled as well.</summary>
+        public int ReachedIfOverride { get; init; }
+
+        /// <summary>Fields not modelled above.</summary>
+        [JsonExtensionData]
+        public IDictionary<string, JsonElement>? AdditionalData { get; init; }
+    }
+
+    /// <summary>What adding contacts to a campaign did.</summary>
+    public sealed record ContactSyncResult
+    {
+        /// <summary>How many contacts were appended.</summary>
+        public int Added { get; init; }
+
+        /// <summary>How many were already on the list.</summary>
+        public int Skipped { get; init; }
+
+        /// <summary>How many rows held no usable phone number.</summary>
+        public int Rejected { get; init; }
+
+        /// <summary>
+        /// The column read as the phone number, so a file read from the wrong one
+        /// is distinguishable from one that could not be read at all.
+        /// </summary>
+        public string? PhoneColumn { get; init; }
+
+        /// <summary>Fields not modelled above.</summary>
+        [JsonExtensionData]
+        public IDictionary<string, JsonElement>? AdditionalData { get; init; }
+    }
+
+    /// <summary>A number this organization must not call.</summary>
+    public sealed record DncEntry
+    {
+        /// <summary>Unique id of the entry.</summary>
         public string Uuid { get; init; } = string.Empty;
 
-        /// <summary>Display name.</summary>
-        public string Name { get; init; } = string.Empty;
+        /// <summary>The number, in international form.</summary>
+        public string Phone { get; init; } = string.Empty;
 
-        /// <summary>Current campaign status.</summary>
-        public string? Status { get; init; }
+        /// <summary>
+        /// How it got here: <c>agent</c> (the person asked on a call), <c>manual</c>,
+        /// <c>import</c> or <c>api</c>.
+        /// </summary>
+        public string Source { get; init; } = string.Empty;
+
+        /// <summary>How far it reaches: <c>all</c> or <c>marketing</c>.</summary>
+        public string Scope { get; init; } = string.Empty;
+
+        /// <summary>Why the number was suppressed.</summary>
+        public string? Reason { get; init; }
+
+        /// <summary>The last time a campaign or call was blocked by this entry.</summary>
+        public string? LastMatchedAt { get; init; }
+
+        /// <summary>When the entry was added.</summary>
+        public string? CreatedAt { get; init; }
+
+        /// <summary>Fields not modelled above.</summary>
+        [JsonExtensionData]
+        public IDictionary<string, JsonElement>? AdditionalData { get; init; }
+    }
+
+    /// <summary>A page of the do-not-call list.</summary>
+    public sealed record DncList
+    {
+        /// <summary>The entries on this page.</summary>
+        public IReadOnlyList<DncEntry> Items { get; init; } = new List<DncEntry>();
+
+        /// <summary>How many entries the list holds in total.</summary>
+        public int Total { get; init; }
+    }
+
+    /// <summary>What a bulk add to the do-not-call list did.</summary>
+    public sealed record DncImportResult
+    {
+        /// <summary>How many numbers were suppressed.</summary>
+        public int Added { get; init; }
+
+        /// <summary>How many were already on the list.</summary>
+        public int Duplicates { get; init; }
+
+        /// <summary>How many were not phone numbers.</summary>
+        public int Rejected { get; init; }
 
         /// <summary>Fields not modelled above.</summary>
         [JsonExtensionData]
