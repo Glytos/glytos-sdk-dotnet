@@ -203,6 +203,21 @@ namespace Glytos.Tests
         }
 
         [Fact]
+        public async Task DncOmitsAnUnstatedReasonRatherThanSendingNull()
+        {
+            // The reason is a plain string server-side, not a nullable one, so a
+            // null is a 422 rather than "no reason given".
+            var handler = new StubHandler(HttpStatusCode.Created, "{\"uuid\":\"d1\"}");
+            using var client = NewClient(handler);
+
+            await client.Dnc.AddAsync("+15551230001");
+            Assert.Equal("{\"phone\":\"+15551230001\"}", handler.LastBody);
+
+            await client.Dnc.ImportAsync(new[] { "+15551230001" });
+            Assert.Equal("{\"phones\":[\"+15551230001\"]}", handler.LastBody);
+        }
+
+        [Fact]
         public async Task DncImportReportsWhatItDid()
         {
             var handler = new StubHandler(HttpStatusCode.OK, "{\"added\":8,\"duplicates\":1,\"rejected\":2}");
