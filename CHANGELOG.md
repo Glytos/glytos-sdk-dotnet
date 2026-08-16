@@ -4,6 +4,44 @@ All notable changes to this project are documented in this file. The format is b
 on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `SipTrunks` - connect a carrier directly over SIP, with no third party in
+  between: `PresetsAsync`, `ListAsync`, `CreateAsync`, `UpdateAsync`,
+  `DeleteAsync`, `TestAsync`. Numbers are attached to a registered trunk through
+  `PhoneNumbers.ImportNumberAsync`, which now takes `sipTrunkUuid`.
+- `Integrations` and `Integrations.Connections` - the destinations an agent or an
+  automation can act on, and the named connections holding their credentials.
+- `Automations` - fire an integration action when an event happens: `ListAsync`,
+  `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `RunsAsync`, `TestAsync`.
+- `TestSuites` - `ListAsync`, `CreateAsync`, `DeleteAsync`, `RunAsync`.
+- `Billing` - `CreditsAsync`, `TransactionsAsync`, `UsageAsync`. Checking the
+  balance before a long outbound run no longer needs a raw `RequestAsync` call.
+- `Environments.ListAsync`, `Providers.ListAsync`, `Providers.ResourcesAsync`,
+  `ApiKeys.ListAsync`/`CreateAsync`/`DeleteAsync`,
+  `Organizations.RetrieveAsync`/`UpdateAsync`/`RegionsAsync`.
+- `KnowledgeBase.RetrieveDocumentAsync` and
+  `KnowledgeBase.DeleteDocumentAsync`. Documents could be created and listed but
+  never read back or removed.
+- `Tools.DiscoverMcpAsync` - ask an MCP server what it publishes, instead of
+  transcribing its schema by hand.
+- `Imports.ConnectAsync` and `Imports.PullAsync` - list the agents on another
+  platform with its API key, then bring over the ones you pick. The key is never
+  stored.
+- `Calls.SayAsync`, `Calls.TransferAsync` and `Calls.EndAsync`, which spell out
+  what each control action requires. `Calls.ControlAsync` still takes a raw
+  object.
+- `Workflows.CreateAsync` takes `primaryChannel`.
+
+### Fixed
+
+- `Tools` documented `kind` as http / static / mcp. The API has accepted `code`,
+  `integration` and `client` since they shipped, and the summary now says what
+  each of the six does.
+- The README advertised a `Tools.RetrieveAsync` that does not exist.
+
 ## [0.3.0] - 2026-08-09
 
 ### Added

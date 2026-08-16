@@ -62,6 +62,15 @@ namespace Glytos.Resources
             UploadDocumentAsync(System.Text.Encoding.UTF8.GetBytes(content), filename, cancellationToken);
 
         /// <summary>Run a hybrid (vector + full-text) search over your documents.</summary>
+        /// <summary>One document, including its extracted text.</summary>
+        public Task<Document> RetrieveDocumentAsync(long documentId, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Document>(HttpMethod.Get, "/knowledge-base/documents/" + documentId.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken: cancellationToken);
+
+        /// <summary>Delete a document, with its chunks and embeddings.</summary>
+        public Task<System.Text.Json.JsonElement> DeleteDocumentAsync(long documentId, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<System.Text.Json.JsonElement>(HttpMethod.Delete, "/knowledge-base/documents/" + documentId.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken: cancellationToken);
+
+        /// <summary>Hybrid (vector + full-text) search over your documents.</summary>
         public Task<IReadOnlyList<SearchHit>> SearchAsync(
             string query,
             int? topK = null,

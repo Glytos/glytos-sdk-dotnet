@@ -58,6 +58,7 @@ namespace Glytos.Resources
             string? providerSid = null,
             object? credentials = null,
             string? workflowUuid = null,
+            string? sipTrunkUuid = null,
             CancellationToken cancellationToken = default)
         {
             var body = new Dictionary<string, object?> { ["e164"] = e164 };
@@ -79,6 +80,11 @@ namespace Glytos.Resources
             if (workflowUuid is not null)
             {
                 body["workflow_uuid"] = workflowUuid;
+            }
+
+            if (sipTrunkUuid is not null)
+            {
+                body["sip_trunk_uuid"] = sipTrunkUuid;
             }
 
             return _client.RequestAsync<PhoneNumber>(HttpMethod.Post, "/telephony/numbers/import", body, cancellationToken: cancellationToken);

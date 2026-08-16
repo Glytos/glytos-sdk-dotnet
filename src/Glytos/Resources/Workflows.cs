@@ -33,9 +33,15 @@ namespace Glytos.Resources
             string name,
             string mode = "prompt",
             object? config = null,
+            string? primaryChannel = null,
             CancellationToken cancellationToken = default)
         {
             var body = new Dictionary<string, object?> { ["name"] = name, ["mode"] = mode };
+            if (primaryChannel is not null)
+            {
+                body["primary_channel"] = primaryChannel;
+            }
+
             if (config is not null)
             {
                 body["config"] = config;

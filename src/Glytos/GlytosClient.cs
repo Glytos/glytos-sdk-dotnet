@@ -87,6 +87,33 @@ namespace Glytos
         /// <summary>Analytics: aggregated usage and performance metrics.</summary>
         public Analytics Analytics { get; }
 
+        /// <summary>SIP trunks: connect a carrier directly, with no gateway in between.</summary>
+        public SipTrunks SipTrunks { get; }
+
+        /// <summary>Integrations: third-party destinations and their connections.</summary>
+        public Integrations Integrations { get; }
+
+        /// <summary>Automations: fire an integration action when an event happens.</summary>
+        public Automations Automations { get; }
+
+        /// <summary>Test suites: replay saved conversations against an agent.</summary>
+        public TestSuites TestSuites { get; }
+
+        /// <summary>Billing: credit balance, ledger and usage.</summary>
+        public Billing Billing { get; }
+
+        /// <summary>Environments: Development, Staging and Production.</summary>
+        public Environments Environments { get; }
+
+        /// <summary>Providers: the model, transcriber and voice catalog.</summary>
+        public Providers Providers { get; }
+
+        /// <summary>API keys: keys for calling this API.</summary>
+        public ApiKeys ApiKeys { get; }
+
+        /// <summary>Organizations: this key's organization, and the available regions.</summary>
+        public Organizations Organizations { get; }
+
         /// <summary>Creates a client with the given API key and default options.</summary>
         public GlytosClient(string apiKey)
             : this(apiKey, null)
@@ -148,6 +175,15 @@ namespace Glytos
             KnowledgeBase = new KnowledgeBase(this);
             VectorStores = new VectorStores(this);
             Analytics = new Analytics(this);
+            SipTrunks = new SipTrunks(this);
+            Integrations = new Integrations(this);
+            Automations = new Automations(this);
+            TestSuites = new TestSuites(this);
+            Billing = new Billing(this);
+            Environments = new Environments(this);
+            Providers = new Providers(this);
+            ApiKeys = new ApiKeys(this);
+            Organizations = new Organizations(this);
         }
 
         /// <summary>

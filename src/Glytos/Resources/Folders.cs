@@ -52,6 +52,29 @@ namespace Glytos.Resources
                 new Dictionary<string, object?> { ["payload"] = payload },
                 cancellationToken: cancellationToken);
 
+        /// <summary>
+        /// List what is on the other platform, using its API key. The key is used
+        /// for this request and is never stored.
+        /// </summary>
+        public Task<JsonElement> ConnectAsync(string source, string apiKey, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<JsonElement>(
+                HttpMethod.Post,
+                "/imports/" + Uri.EscapeDataString(source) + "/connect",
+                new Dictionary<string, object?> { ["api_key"] = apiKey },
+                cancellationToken: cancellationToken);
+
+        /// <summary>Bring over the agents picked from <see cref="ConnectAsync"/>.</summary>
+        public Task<JsonElement> PullAsync(
+            string source,
+            string apiKey,
+            IEnumerable<string> agentIds,
+            CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<JsonElement>(
+                HttpMethod.Post,
+                "/imports/" + Uri.EscapeDataString(source) + "/pull",
+                new Dictionary<string, object?> { ["api_key"] = apiKey, ["agent_ids"] = new List<string>(agentIds) },
+                cancellationToken: cancellationToken);
+
         /// <summary>Bring over an assistant definition, tools and all.</summary>
         public Task<JsonElement> AssistantAsync(object assistant, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<JsonElement>(

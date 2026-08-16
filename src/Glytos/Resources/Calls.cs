@@ -57,5 +57,17 @@ namespace Glytos.Resources
         /// <summary>Control an in-progress call (e.g. transfer, hang up).</summary>
         public Task<JsonElement> ControlAsync(string callUuid, object body, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<JsonElement>(HttpMethod.Post, "/calls/" + System.Uri.EscapeDataString(callUuid) + "/control", body, cancellationToken: cancellationToken);
+
+        /// <summary>Make the agent speak a line on a call in progress.</summary>
+        public Task<JsonElement> SayAsync(string callUuid, string text, CancellationToken cancellationToken = default) =>
+            ControlAsync(callUuid, new Dictionary<string, object?> { ["action"] = "say", ["text"] = text }, cancellationToken);
+
+        /// <summary>Hand a call in progress to a person.</summary>
+        public Task<JsonElement> TransferAsync(string callUuid, string toNumber, CancellationToken cancellationToken = default) =>
+            ControlAsync(callUuid, new Dictionary<string, object?> { ["action"] = "transfer", ["to_number"] = toNumber }, cancellationToken);
+
+        /// <summary>Hang up a call in progress.</summary>
+        public Task<JsonElement> EndAsync(string callUuid, CancellationToken cancellationToken = default) =>
+            ControlAsync(callUuid, new Dictionary<string, object?> { ["action"] = "end" }, cancellationToken);
     }
 }

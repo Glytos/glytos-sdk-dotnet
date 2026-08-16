@@ -83,17 +83,26 @@ var overview = await glytos.RequestAsync<JsonElement>("GET", "/analytics/overvie
 | `glytos.Agents` (alias `Workflows`) | `ListAsync`, `RetrieveAsync`, `CreateAsync`, `RenameAsync`, `PublishAsync`, `PromoteAsync`, `DuplicateAsync`, `ArchiveAsync`, `DeleteAsync`, `TemplatesAsync`, `ExportAsync`, `MoveToFolderAsync`, `RemoveFromFolderAsync`, `VersionsAsync`, `StartSessionAsync`, `SendMessageAsync`, `StreamMessageAsync`, `RunTextAsync` |
 | `glytos.Threads` | `CreateAsync`, `RetrieveAsync`, `Messages.CreateAsync`, `Messages.ListAsync`, `Runs.CreateAsync`, `Runs.StreamAsync` |
 | `glytos.Folders` | `ListAsync`, `CreateAsync`, `RenameAsync`, `DeleteAsync` |
-| `glytos.Imports` | `SourcesAsync`, `CreateAsync`, `AssistantAsync` |
+| `glytos.Imports` | `SourcesAsync`, `CreateAsync`, `ConnectAsync`, `PullAsync`, `AssistantAsync` |
 | `glytos.Chat` | `TokenAsync`, `MessagesAsync`, `StreamAsync`, `UploadFileAsync` |
-| `glytos.Calls` | `CreateAsync`, `ListAsync`, `RetrieveAsync`, `WebTokenAsync`, `ControlAsync` |
+| `glytos.Calls` | `CreateAsync`, `ListAsync`, `RetrieveAsync`, `WebTokenAsync`, `ControlAsync`, `SayAsync`, `TransferAsync`, `EndAsync` |
 | `glytos.PhoneNumbers` | `SearchAsync`, `ListAsync`, `ProvisionAsync`, `ImportNumberAsync`, `InstantAsync`, `AssignAsync`, `ReleaseAsync`, `ProvidersAsync` |
-| `glytos.KnowledgeBase` | `ListDocumentsAsync`, `CreateDocumentAsync`, `UploadDocumentAsync`, `SearchAsync` |
+| `glytos.SipTrunks` | `PresetsAsync`, `ListAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `TestAsync` |
+| `glytos.KnowledgeBase` | `ListDocumentsAsync`, `CreateDocumentAsync`, `UploadDocumentAsync`, `RetrieveDocumentAsync`, `DeleteDocumentAsync`, `SearchAsync` |
 | `glytos.VectorStores` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `DeleteAsync`, `UploadDocumentAsync` |
-| `glytos.Tools` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `UpdateAsync`, `DeleteAsync` |
+| `glytos.Tools` | `ListAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `DiscoverMcpAsync` |
 | `glytos.Campaigns` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `StartAsync`, `StopAsync`, `DeleteAsync`, `AddContactsAsync`, `SyncContactsAsync`, `PreviewSuppressionAsync` |
 | `glytos.Dnc` | `ListAsync`, `AddAsync`, `ImportAsync`, `SetScopeAsync`, `RemoveAsync` |
+| `glytos.Integrations` | `ListAsync`, `RunAsync`, `Connections.ListAsync`, `Connections.CreateAsync`, `Connections.UpdateAsync`, `Connections.DeleteAsync`, `Connections.RunAsync` |
+| `glytos.Automations` | `ListAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `RunsAsync`, `TestAsync` |
+| `glytos.TestSuites` | `ListAsync`, `CreateAsync`, `DeleteAsync`, `RunAsync` |
 | `glytos.Sessions` | `ListAsync` |
 | `glytos.Analytics` | `OverviewAsync` |
+| `glytos.Billing` | `CreditsAsync`, `TransactionsAsync`, `UsageAsync` |
+| `glytos.Environments` | `ListAsync` |
+| `glytos.Providers` | `ListAsync`, `ResourcesAsync` |
+| `glytos.ApiKeys` | `ListAsync`, `CreateAsync`, `DeleteAsync` |
+| `glytos.Organizations` | `RetrieveAsync`, `UpdateAsync`, `RegionsAsync` |
 | `glytos.Webhooks` | `ListAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `EventsAsync`, `DeliveriesAsync`, `RedeliverAsync`, `Verify` |
 
 `Agents` and `Workflows` are the same resource under two names: the product calls
