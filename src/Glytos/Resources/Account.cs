@@ -42,6 +42,31 @@ namespace Glytos.Resources
             return _client.RequestAsync<TestSuite>(HttpMethod.Post, "/test-suites", body, cancellationToken: cancellationToken);
         }
 
+        /// <summary>Rename a suite, repoint it at another agent, or rewrite its cases.</summary>
+        public Task<TestSuite> UpdateAsync(
+            string suiteUuid,
+            string? name = null,
+            string? workflowUuid = null,
+            object? cases = null,
+            CancellationToken cancellationToken = default)
+        {
+            var body = new Dictionary<string, object?>();
+            if (name is not null)
+            {
+                body["name"] = name;
+            }
+            if (workflowUuid is not null)
+            {
+                body["workflow_uuid"] = workflowUuid;
+            }
+            if (cases is not null)
+            {
+                body["cases"] = cases;
+            }
+
+            return _client.RequestAsync<TestSuite>(HttpMethod.Put, "/test-suites/" + Uri.EscapeDataString(suiteUuid), body, cancellationToken: cancellationToken);
+        }
+
         /// <summary>Delete a suite.</summary>
         public Task<JsonElement> DeleteAsync(string suiteUuid, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<JsonElement>(HttpMethod.Delete, "/test-suites/" + Uri.EscapeDataString(suiteUuid), cancellationToken: cancellationToken);
