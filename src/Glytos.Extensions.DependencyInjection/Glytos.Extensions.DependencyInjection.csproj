@@ -12,7 +12,7 @@
 
   <PropertyGroup>
     <PackageId>Glytos.Extensions.DependencyInjection</PackageId>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Authors>Glytos</Authors>
     <Company>Glytos</Company>
     <Description>ASP.NET Core dependency-injection integration for the Glytos SDK: services.AddGlytos(...).</Description>

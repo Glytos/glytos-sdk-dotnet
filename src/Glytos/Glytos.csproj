@@ -16,7 +16,7 @@
 
   <PropertyGroup>
     <PackageId>Glytos</PackageId>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Authors>Glytos</Authors>
     <Company>Glytos</Company>
     <Description>Official Glytos server SDK for .NET. Build an agent once and run it as text or as voice: threaded conversations with streaming, phone and web calls, phone numbers, and signed webhooks.</Description>
