@@ -10,6 +10,10 @@ namespace Glytos.Resources
     /// <summary>Campaigns: run outbound calling campaigns over your agents.</summary>
     public sealed class Campaigns
     {
+        // netstandard2.0 has no Patch, so the verb is spelled out. The
+        // other resources that patch do the same.
+        private static readonly HttpMethod Patch = new HttpMethod("PATCH");
+
         private readonly GlytosClient _client;
 
         internal Campaigns(GlytosClient client) => _client = client;
@@ -130,6 +134,101 @@ namespace Glytos.Resources
         /// </summary>
         public Task<Campaign> StopAsync(string campaignUuid, CancellationToken cancellationToken = default) =>
             _client.RequestAsync<Campaign>(HttpMethod.Post, "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid) + "/stop", cancellationToken: cancellationToken);
+
+        /// <summary>
+        /// Rename a campaign, or change when and within what hours it dials.
+        /// </summary>
+        /// <remarks>
+        /// A rename is accepted at any point. The schedule and the calling window can
+        /// only be changed before the campaign starts: moving the start of one already
+        /// dialing would say nothing about the calls it has placed. Anything left null
+        /// is left alone; to remove a schedule entirely use <see cref="UnscheduleAsync"/>,
+        /// since omitting a field and clearing it are different instructions and only
+        /// one of them can be expressed by absence.
+        /// </remarks>
+        public Task<Campaign> UpdateAsync(
+            string campaignUuid,
+            string? name = null,
+            DateTimeOffset? scheduledAt = null,
+            string? callWindowStart = null,
+            string? callWindowEnd = null,
+            string? timezone = null,
+            CancellationToken cancellationToken = default)
+        {
+            var body = new Dictionary<string, object?>();
+            if (name is not null)
+            {
+                body["name"] = name;
+            }
+
+            if (scheduledAt is not null)
+            {
+                body["scheduled_at"] = scheduledAt.Value.ToString("o");
+            }
+
+            if (callWindowStart is not null)
+            {
+                body["call_window_start"] = callWindowStart;
+            }
+
+            if (callWindowEnd is not null)
+            {
+                body["call_window_end"] = callWindowEnd;
+            }
+
+            if (timezone is not null)
+            {
+                body["timezone"] = timezone;
+            }
+
+            return _client.RequestAsync<Campaign>(
+                Patch,
+                "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid),
+                body,
+                cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// Clear a campaign's schedule, returning it to a draft that waits for
+        /// <see cref="StartAsync"/>.
+        /// </summary>
+        public Task<Campaign> UnscheduleAsync(string campaignUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestAsync<Campaign>(
+                Patch,
+                "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid),
+                new Dictionary<string, object?> { ["scheduled_at"] = null },
+                cancellationToken: cancellationToken);
+
+        /// <summary>
+        /// Copy a campaign and its contact list into a fresh draft. Nothing dials and no
+        /// outcome is copied, so this is how you run the same list again or reuse a setup
+        /// against a new one.
+        /// </summary>
+        public Task<Campaign> DuplicateAsync(string campaignUuid, string? name = null, CancellationToken cancellationToken = default)
+        {
+            var body = new Dictionary<string, object?>();
+            if (name is not null)
+            {
+                body["name"] = name;
+            }
+
+            return _client.RequestAsync<Campaign>(
+                HttpMethod.Post,
+                "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid) + "/duplicate",
+                body,
+                cancellationToken: cancellationToken);
+        }
+
+        /// <summary>
+        /// The contacts and what came of each, as CSV text: phone, outcome, dialed_at,
+        /// error, session_uuid. The session uuid joins a result back to the conversation
+        /// that produced it.
+        /// </summary>
+        public Task<string> ExportAsync(string campaignUuid, CancellationToken cancellationToken = default) =>
+            _client.RequestTextAsync(
+                HttpMethod.Get,
+                "/telephony/campaigns/" + Uri.EscapeDataString(campaignUuid) + "/export",
+                cancellationToken);
 
         /// <summary>Remove a campaign and its contact list, stopping it first if running.</summary>
         public Task<JsonElement> DeleteAsync(string campaignUuid, CancellationToken cancellationToken = default) =>

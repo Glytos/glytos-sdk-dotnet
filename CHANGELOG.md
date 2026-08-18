@@ -8,6 +8,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Campaigns.UpdateAsync`, `UnscheduleAsync`, `DuplicateAsync` and `ExportAsync`.
+  A rename is accepted at any point; the schedule and the calling window can only
+  be changed before a campaign starts. `UnscheduleAsync` is separate because
+  `UpdateAsync` drops a null argument, and clearing a schedule has to send one.
+- `Campaign` gained `Counts`, `WorkflowName` and `Imported`; `CampaignCounts` is
+  new. Measure progress against `Counts.Dialable` rather than `Counts.Total`.
+- `ContactSyncResult` gained `Duplicates` and `OnDoNotCall`.
+- `GlytosClient.RequestTextAsync` for endpoints that do not answer in JSON.
+
 - `SipTrunks` - connect a carrier directly over SIP, with no third party in
   between: `PresetsAsync`, `ListAsync`, `CreateAsync`, `UpdateAsync`,
   `DeleteAsync`, `TestAsync`. Numbers are attached to a registered trunk through

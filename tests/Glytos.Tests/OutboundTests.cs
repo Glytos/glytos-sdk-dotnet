@@ -231,6 +231,76 @@ namespace Glytos.Tests
             Assert.Equal(2, result.Rejected);
         }
 
+        [Fact]
+        public async Task UpdateSendsOnlyWhatItWasGiven()
+        {
+            var handler = new StubHandler(HttpStatusCode.OK, "{\"uuid\":\"cmp_1\",\"name\":\"Renamed\"}");
+            using var client = NewClient(handler);
+
+            await client.Campaigns.UpdateAsync("cmp_1", name: "Renamed");
+
+            Assert.Equal("PATCH", handler.LastRequest!.Method.Method);
+            Assert.EndsWith("/telephony/campaigns/cmp_1", handler.LastRequest.RequestUri!.AbsolutePath);
+            Assert.Equal("{\"name\":\"Renamed\"}", handler.LastBody);
+        }
+
+        [Fact]
+        public async Task UnscheduleSendsTheNullThatAbsenceCannotExpress()
+        {
+            // UpdateAsync drops a null argument, so clearing a schedule needs its own
+            // call: omitting a field and setting it to nothing are different
+            // instructions and only one of them survives.
+            var handler = new StubHandler(HttpStatusCode.OK, "{\"uuid\":\"cmp_1\",\"status\":\"draft\"}");
+            using var client = NewClient(handler);
+
+            await client.Campaigns.UnscheduleAsync("cmp_1");
+
+            Assert.Equal("PATCH", handler.LastRequest!.Method.Method);
+            Assert.Contains("\"scheduled_at\":null", handler.LastBody);
+        }
+
+        [Fact]
+        public async Task DuplicatePostsToTheCampaignItCopies()
+        {
+            var handler = new StubHandler(HttpStatusCode.Created, "{\"uuid\":\"cmp_2\",\"name\":\"Second run\"}");
+            using var client = NewClient(handler);
+
+            var copy = await client.Campaigns.DuplicateAsync("cmp_1", "Second run");
+
+            Assert.EndsWith("/telephony/campaigns/cmp_1/duplicate", handler.LastRequest!.RequestUri!.AbsolutePath);
+            Assert.Equal("cmp_2", copy.Uuid);
+        }
+
+        [Fact]
+        public async Task ExportReturnsCsvTextRatherThanFailingToDeserializeIt()
+        {
+            var csv = "phone,outcome,dialed_at,error,session_uuid\n+905551112233,answered,,,run-1\n";
+            var handler = new StubHandler(HttpStatusCode.OK, csv);
+            using var client = NewClient(handler);
+
+            var result = await client.Campaigns.ExportAsync("cmp_1");
+
+            Assert.Equal(csv, result);
+            Assert.EndsWith("/telephony/campaigns/cmp_1/export", handler.LastRequest!.RequestUri!.AbsolutePath);
+        }
+
+        [Fact]
+        public async Task CampaignCountsDeserialize()
+        {
+            var handler = new StubHandler(
+                HttpStatusCode.OK,
+                "[{\"uuid\":\"cmp_1\",\"name\":\"Promo\",\"workflow_name\":\"Sales\",\"counts\":{\"total\":10,\"suppressed\":2,\"dialed\":5,\"dialable\":8}}]");
+            using var client = NewClient(handler);
+
+            var campaigns = await client.Campaigns.ListAsync();
+
+            Assert.Equal("Sales", campaigns[0].WorkflowName);
+            // Dialable is the progress denominator, not Total: the two suppressed
+            // numbers will never be dialed.
+            Assert.Equal(8, campaigns[0].Counts!.Dialable);
+            Assert.Equal(10, campaigns[0].Counts!.Total);
+        }
+
         private static GlytosClient NewClient(HttpMessageHandler handler) =>
             new GlytosClient("gly_test", new GlytosClientOptions
             {

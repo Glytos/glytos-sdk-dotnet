@@ -91,7 +91,7 @@ var overview = await glytos.RequestAsync<JsonElement>("GET", "/analytics/overvie
 | `glytos.KnowledgeBase` | `ListDocumentsAsync`, `CreateDocumentAsync`, `UploadDocumentAsync`, `RetrieveDocumentAsync`, `DeleteDocumentAsync`, `SearchAsync` |
 | `glytos.VectorStores` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `DeleteAsync`, `UploadDocumentAsync` |
 | `glytos.Tools` | `ListAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `DiscoverMcpAsync` |
-| `glytos.Campaigns` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `StartAsync`, `StopAsync`, `DeleteAsync`, `AddContactsAsync`, `SyncContactsAsync`, `PreviewSuppressionAsync` |
+| `glytos.Campaigns` | `ListAsync`, `CreateAsync`, `RetrieveAsync`, `UpdateAsync`, `UnscheduleAsync`, `DuplicateAsync`, `ExportAsync`, `StartAsync`, `StopAsync`, `DeleteAsync`, `AddContactsAsync`, `SyncContactsAsync`, `PreviewSuppressionAsync` |
 | `glytos.Dnc` | `ListAsync`, `AddAsync`, `ImportAsync`, `SetScopeAsync`, `RemoveAsync` |
 | `glytos.Integrations` | `ListAsync`, `RunAsync`, `Connections.ListAsync`, `Connections.CreateAsync`, `Connections.UpdateAsync`, `Connections.DeleteAsync`, `Connections.RunAsync` |
 | `glytos.Automations` | `ListAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `RunsAsync`, `TestAsync` |

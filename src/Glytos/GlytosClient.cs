@@ -260,6 +260,51 @@ namespace Glytos
         }
 
         /// <summary>
+        /// Request an endpoint that does not answer in JSON, returning the body verbatim.
+        /// </summary>
+        /// <remarks>
+        /// Separate from <c>RequestAsync</c> because a CSV export has nothing to
+        /// deserialize into and deserializing it would simply throw.
+        /// </remarks>
+        public async Task<string> RequestTextAsync(
+            HttpMethod method,
+            string path,
+            CancellationToken cancellationToken = default)
+        {
+            using var request = new HttpRequestMessage(method, _baseUrl + path);
+            request.Headers.TryAddWithoutValidation("X-API-Key", _apiKey);
+            if (!string.IsNullOrEmpty(_environment))
+            {
+                request.Headers.TryAddWithoutValidation("X-Environment-Id", _environment);
+            }
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            }
+            catch (HttpRequestException exception)
+            {
+                throw new GlytosException(0, "network_error", exception.Message, null, exception);
+            }
+
+            using (response)
+            {
+                var text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var requestId = response.Headers.TryGetValues("X-Request-Id", out var values)
+                        ? FirstOrNull(values)
+                        : null;
+                    var (code, message) = ParseError(text, response.ReasonPhrase);
+                    throw new GlytosException((int)response.StatusCode, code, message, requestId);
+                }
+
+                return text;
+            }
+        }
+
+        /// <summary>
         /// Stream a Server-Sent Events endpoint, yielding one parsed event at a time.
         /// </summary>
         /// <remarks>

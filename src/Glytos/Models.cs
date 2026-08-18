@@ -179,6 +179,20 @@ namespace Glytos
         /// <summary>The agent this campaign dials with, when present.</summary>
         public string? WorkflowUuid { get; init; }
 
+        /// <summary>
+        /// The agent that does the dialing, named so a row need not resolve the uuid
+        /// against the agent list.
+        /// </summary>
+        public string? WorkflowName { get; init; }
+
+        /// <summary>How far the campaign has got.</summary>
+        public CampaignCounts? Counts { get; init; }
+
+        /// <summary>
+        /// Only on the create response: what reading the supplied contact list did.
+        /// </summary>
+        public ContactSyncResult? Imported { get; init; }
+
         /// <summary>The caller id this campaign dials from.</summary>
         public string? FromNumber { get; init; }
 
@@ -287,6 +301,55 @@ namespace Glytos
         public IDictionary<string, JsonElement>? AdditionalData { get; init; }
     }
 
+    /// <summary>
+    /// How far a campaign has got, sent with every campaign so a row can draw its
+    /// progress without fetching the contact list to count it.
+    /// </summary>
+    public sealed record CampaignCounts
+    {
+        /// <summary>Every contact on the campaign.</summary>
+        public int Total { get; init; }
+
+        /// <summary>Not yet dialed.</summary>
+        public int Pending { get; init; }
+
+        /// <summary>Handed to the carrier and still in flight.</summary>
+        public int Dialing { get; init; }
+
+        /// <summary>Calls a person answered.</summary>
+        public int Answered { get; init; }
+
+        /// <summary>Calls answering-machine detection found a recording on.</summary>
+        public int Voicemail { get; init; }
+
+        /// <summary>Dialed, but no call ever connected.</summary>
+        public int NoAnswer { get; init; }
+
+        /// <summary>The carrier refused or the call failed.</summary>
+        public int Failed { get; init; }
+
+        /// <summary>On the do-not-call list, so never dialed.</summary>
+        public int Suppressed { get; init; }
+
+        /// <summary>
+        /// Handed to the carrier, including calls still in flight. Excludes
+        /// <see cref="Suppressed"/>.
+        /// </summary>
+        public int Dialed { get; init; }
+
+        /// <summary>
+        /// What the campaign can ever dial: <see cref="Total"/> minus
+        /// <see cref="Suppressed"/>. Measure progress against this, not against
+        /// <see cref="Total"/>, or a finished campaign stops short of complete by
+        /// however many numbers were suppressed.
+        /// </summary>
+        public int Dialable { get; init; }
+
+        /// <summary>Fields not modelled above.</summary>
+        [JsonExtensionData]
+        public IDictionary<string, JsonElement>? AdditionalData { get; init; }
+    }
+
     /// <summary>What adding contacts to a campaign did.</summary>
     public sealed record ContactSyncResult
     {
@@ -296,8 +359,18 @@ namespace Glytos
         /// <summary>How many were already on the list.</summary>
         public int Skipped { get; init; }
 
+        /// <summary>How many appeared more than once inside the file.</summary>
+        public int Duplicates { get; init; }
+
         /// <summary>How many rows held no usable phone number.</summary>
         public int Rejected { get; init; }
+
+        /// <summary>
+        /// Of what was added, how many are on the do-not-call list and so will never
+        /// be dialed. Counted at import purely to report it; suppression itself
+        /// happens at dial time.
+        /// </summary>
+        public int OnDoNotCall { get; init; }
 
         /// <summary>
         /// The column read as the phone number, so a file read from the wrong one
