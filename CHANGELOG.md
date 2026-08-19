@@ -6,6 +6,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-19
+
 ### Added
 
 - `Campaigns.UpdateAsync`, `UnscheduleAsync`, `DuplicateAsync` and `ExportAsync`.
@@ -16,6 +18,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   new. Measure progress against `Counts.Dialable` rather than `Counts.Total`.
 - `ContactSyncResult` gained `Duplicates` and `OnDoNotCall`.
 - `GlytosClient.RequestTextAsync` for endpoints that do not answer in JSON.
+
+## [0.4.0] - 2026-08-17
+
+### Added
 
 - `SipTrunks` - connect a carrier directly over SIP, with no third party in
   between: `PresetsAsync`, `ListAsync`, `CreateAsync`, `UpdateAsync`,
